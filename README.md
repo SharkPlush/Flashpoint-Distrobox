@@ -10,6 +10,8 @@ This installer configures the Distrobox container to automatically shutdown afte
 
 I don't own a steamdeck or an NVIDIA GPU so I don't know how this will work on those devices.
 
+If you need to edit the Wine prefix it MUST BE DONE FROM WITHIN THE DISTROBOX SHELL!
+
 INSTALL:
 ```
 curl -s https://raw.githubusercontent.com/SharkPlush/Flashpoint-Distrobox/refs/heads/main/flashpoint%20-install.sh | sh
