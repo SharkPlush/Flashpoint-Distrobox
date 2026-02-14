@@ -2,8 +2,6 @@
 check_depedencies() {
 IN="$(basename "$(command -v curl || command -v wget)")" || { echo "An installation of curl or wget need to be present! Please look up how to install one of these for your distribution."; exit 1; }
 
-command -v podman > /dev/null 2>&1 || command -v docker > /dev/null 2>&1 || { echo "An installation of Podman or Docker need to be present! Please look up how to install one of these for your distribution."; exit 1; }
-
 command -v distrobox > /dev/null 2>&1 || { echo "An installation of Distrobox need to be present! Please look up how to install it your distribution."; exit 1; }
 
 install_flashpoint
