@@ -12,11 +12,11 @@ I don't own a steamdeck or an NVIDIA GPU so I don't know how this will work on t
 
 INSTALL:
 ```
-curl -s https://raw.githubusercontent.com/SharkPlush/Flashpoint-Distrobox/refs/heads/main/flashpoint%20-install.sh
+curl -s https://raw.githubusercontent.com/SharkPlush/Flashpoint-Distrobox/refs/heads/main/flashpoint%20-install.sh | sh
 ```
 OR
 ```
-wget -qO- https://raw.githubusercontent.com/SharkPlush/Flashpoint-Distrobox/refs/heads/main/flashpoint%20-install.sh
+wget -qO- https://raw.githubusercontent.com/SharkPlush/Flashpoint-Distrobox/refs/heads/main/flashpoint%20-install.sh | sh
 ```
 Or you can download the .sh file and run it manually.
 
