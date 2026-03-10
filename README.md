@@ -25,7 +25,8 @@ Or you can download the .sh file and run it manually.
 Why this exists? Wines WOW64 (which flashpoint started shipping) update messed up half the games I played and I couldn't play them. This installer uses a Fedora 40 image for Distrobox and installs a Pre WOW64 Wine so the game work properly.
 
 TODO:
-- Maybe add Toolbx support.
+- Maybe add Toolbx support. (Unikely because of the wanted feature below)
+- Rework installer to isolate everything (inlcuding the flashpoint zip install) to an internal /home inside the Distrobox container.
 - Add an updater.
 - Have the script automatically pull the latest Flashpoint .zip
 - Create uninstaller.
