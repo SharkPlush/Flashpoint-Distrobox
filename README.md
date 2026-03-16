@@ -16,8 +16,9 @@ To install download the bash script and make it executable. I recommend tossing 
 
 Why this exists? Wines WOW64 (which flashpoint started shipping) update messed up half the games I played and I couldn't play them. This installer uses a Fedora 40 image for Distrobox and installs a Pre WOW64 Wine so the game work properly.
 
-The installer also makes the Distrobox container have its own $HOME so the installation should be consistent for everyone no matter what distro you are using. (The only 2 files that aren't limited to the containers interal home are a wrapper that starts flashpoint + the container and the .desktop file)
+The installer also makes the Distrobox container have its own $HOME so the installation should be consistent for everyone no matter what distro you are using. (The only 2 files that aren't limited to the containers internal home are a wrapper that starts flashpoint + the container and the .desktop file)
 
 TODO:
 - Add a progress bar.
 - General cleanups and whatever.
+- Add --enable-audio-fix (enables alsa backend that can fix audio crackling)
