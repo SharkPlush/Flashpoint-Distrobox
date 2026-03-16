@@ -1,8 +1,10 @@
 Use [Flashpoint](https://flashpointarchive.org/) inside a Distrobox container.
 
+This tool is a management tool that can install, uninstall and update flashpoint. Ontop of some other things.
+
 This is mostly meant for immutable Linux distributions, but you can 100% run this on anything if you have Distrobox.
 
-You need curl or wget for this script to work and Distrobox. (duh) Most distributions have curl and wget already so most of you don't have to worry about that.
+You need Distrobox for this to work.
 
 Root privilages are NOT (and not recommended) needed and everything installed will be limited to your user home folder.
 
