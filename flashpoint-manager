@@ -1,0 +1,274 @@
+#!/bin/bash
+update_fp_fun() { # Funtion updates Flashpoint nothing else to it
+local installed_version; local version 
+check_depedencies_fun
+if [ -d "$HOME/.flashpoint/fp-dt/Launcher" ]; then
+  version=$(distrobox enter Flashpoint -- bash -c 'curl -s https://download.flashpointarchive.org/upload/ \
+                                                   | grep -oE "fp[0-9]+\.[0-9]+\.[0-9]+_lin_[0-9]+\.7z" \
+                                                   | sort -t_ -k1,1V -k3,3n \
+                                                   | tail -n1
+                                                  ' 2>/dev/null)
+  echo Y | distrobox-stop Flashpoint > /dev/null 2>&1
+  installed_version=$(cat "$HOME/.flashpoint/version.txt")
+  if [ "$version" = "$installed_version" ]; then
+    echo "Flashpoint is already on the latest version!"; exit 0
+  else
+    echo "Flashpoint is outdated! This manager tries to preserve as much data as possible but.."
+    echo "Some data like custom playlists might be lost! If you want you can find them in"
+    echo "'$HOME/.flashpoint/fp-dt/Data/Playlists/' and copy paste them back in after the update is finished."
+    echo "Would you like to update?"
+    read -rp "[Y/n] " Yn
+    if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+      echo "Starting update.."
+      mkdir -p "$HOME/.flashpoint/.update-folder-temp-dont-delete"
+      
+      # FILE MANAGEMENT BS FOR DATA PRESERVATION 
+      cp    "$HOME/.flashpoint/fp-dt/preferences.json"               "$HOME/.flashpoint/.update-folder-temp-dont-delete"
+      cp    "$HOME/.flashpoint/fp-dt/Data/Playlists/Favorites.json"  "$HOME/.flashpoint/.update-folder-temp-dont-delete"
+      cp    "$HOME/.flashpoint/fp-dt/Data/flashpoint.sqlite"         "$HOME/.flashpoint/.update-folder-temp-dont-delete"
+      cp -r "$HOME/.flashpoint/fp-dt/Data/Games"                     "$HOME/.flashpoint/.update-folder-temp-dont-delete"
+      cp -r "$HOME/.flashpoint/fp-dt/Legacy/htdocs"                  "$HOME/.flashpoint/.update-folder-temp-dont-delete"
+      cp -r "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"                "$HOME/.flashpoint/.update-folder-temp-dont-delete"
+
+      rm -rf "$HOME/.flashpoint/fp-dt"; mkdir -p "$HOME/.flashpoint/fp-dt"
+      distrobox-enter Flashpoint -- bash -c "curl -sL -o $HOME/.flashpoint/fp.7z \"https://download.flashpointarchive.org/upload/${version}\" \
+                                             && 7za x $HOME/.flashpoint/fp.7z -o$HOME/.flashpoint/fp-dt \
+                                             && rm -f $HOME/.flashpoint/fp.7z
+                                             && exit
+                                            " > /dev/null 2>&1
+
+      rm -f  "$HOME/.flashpoint/fp-dt/preferences.json";              cp     "$HOME/.flashpoint/.update-folder-temp-dont-delete/preferences.json" \
+                                                                             "$HOME/.flashpoint/fp-dt"                         
+      rm -f  "$HOME/.flashpoint/fp-dt/Data/Playlists/Favorites.json"; cp     "$HOME/.flashpoint/.update-folder-temp-dont-delete/Favorites.json" \
+                                                                             "$HOME/.flashpoint/fp-dt/Data/Playlists/"
+      rm -f  "$HOME/.flashpoint/fp-dt/Data/flashpoint.sqlite";        cp     "$HOME/.flashpoint/.update-folder-temp-dont-delete/flashpoint.sqlite" \
+                                                                             "$HOME/.flashpoint/fp-dt/Data/"
+      rm -rf "$HOME/.flashpoint/fp-dt/Data/Games";                    cp -r  "$HOME/.flashpoint/.update-folder-temp-dont-delete/Games" \
+                                                                             "$HOME/.flashpoint/fp-dt/Data/"
+      rm -rf "$HOME/.flashpoint/fp-dt/Legacy/htdocs";                 cp -r  "$HOME/.flashpoint/.update-folder-temp-dont-delete/htdocs" \
+                                                                             "$HOME/.flashpoint/fp-dt/Legacy/"
+      rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Wine";               cp -r  "$HOME/.flashpoint/.update-folder-temp-dont-delete/Wine" \
+                                                                             "$HOME/.flashpoint/fp-dt/FPSoftware/"
+      rm -rf "$HOME/.flashpoint/fp-dt/Libraries"; rm -rf "$HOME/.flashpoint/.update-folder-temp-dont-delete/"
+      # FILE MANAGEMENT BS FOR DATA PRESERVATION
+
+      "$HOME/.flashpoint/fp-dt/./start-flashpoint.sh" & pid=$!; kill -INT $pid
+      rm -f "$HOME/.flashpoint/version.txt"
+cat > "$HOME/.flashpoint/version.txt" <<EOF
+$version
+EOF
+      echo Y | distrobox-stop Flashpoint > /dev/null 2>&1
+      echo "Flashpoint has been updated."; exit 0
+    elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+      echo "Ok we won't update!"; exit 0
+    else
+      echo "Unknown option, exiting.."; exit 1
+    fi
+  fi
+else
+  echo "Flashpoint isn't installed!"; exit 1
+fi
+}
+
+re_install_fun () { #deletes all data then just runs the normal install proccess
+if [ -d "$HOME/.flashpoint/fp-dt/Launcher" ]; then
+  echo "This will re-install Flashpoint and the Distrobox container are you sure want to do this? (Your data will be lost)"
+  read -rp "[Y/n] " Yn
+  if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+    echo "Starting re-install.. (This might take a while)"
+    echo Y | distrobox-rm Flashpoint
+    rm -rf "$HOME/.flashpoint"; rm -f "$HOME/.local/bin/flashpointwrapper.sh"; rm -f "$HOME/.local/share/applications/flashpoint-archive.desktop"
+    check_dir_fun
+  elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+    echo "Ok we won't re-install."; exit 0
+  else
+    echo "Unknown option, exiting.."; exit 1
+  fi
+else
+  echo "Flashpoint isn't installed!"; exit 1
+fi
+}
+
+distrobox_setup_fun() { # This create a Distrobox container + sets up flashpoint and the container to play nice with eachother
+local version
+echo "Distrobox will install a Fedora 40 image and Flashpoint with all its dependencies. (This will take a while)"
+echo Y | distrobox-create \
+         --no-entry \
+         --image fedora:40 \
+         --home "$HOME/.flashpoint/" \
+         --name Flashpoint > /dev/null 2>&1
+
+distrobox-enter Flashpoint -- bash -c "sudo dnf install \
+                                       xorg-x11-server-Xwayland \
+                                       curl \
+                                       gtk3 \
+                                       nss \
+                                       pipewire-pulseaudio \
+                                       php \
+                                       p7zip \
+                                       wine \
+                                       libXcomposite.i686 \
+                                       pulseaudio-libs.i686 \
+                                       gtk2 \
+                                       libXt -y \
+                                       && exit
+                                      " > /dev/null 2>&1
+
+version=$(distrobox-enter Flashpoint -- bash -c 'curl -s https://download.flashpointarchive.org/upload/ \
+                                                 | grep -oE "fp[0-9]+\.[0-9]+\.[0-9]+_lin_[0-9]+\.7z" \
+                                                 | sort -t_ -k1,1V -k3,3n \
+                                                 | tail -n1
+                                                ' 2>/dev/null)
+
+distrobox-enter Flashpoint -- bash -c "curl -sL -o $HOME/.flashpoint/fp.7z \"https://download.flashpointarchive.org/upload/${version}\" \
+                                       && 7za x $HOME/.flashpoint/fp.7z -o$HOME/.flashpoint/fp-dt \
+                                       && rm -f $HOME/.flashpoint/fp.7z
+                                       && exit
+                                      " > /dev/null 2>&1
+rm -rf "$HOME/.flashpoint/fp-dt/Libraries"
+cat > "$HOME/.flashpoint/version.txt" <<EOF
+$version
+EOF
+echo Y | distrobox-stop Flashpoint > /dev/null 2>&1
+create_desktop_entry_fun
+}
+
+delete_fun () {
+if [ -d "$HOME/.flashpoint/fp-dt/Launcher" ]; then
+  echo "This will delete Flashpoint with its data and delete the Distrobox container! Are you sure you want to do this?"
+  read -rp "[Y/n] " Yn
+  if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+    echo Y | distrobox-rm Flashpoint > /dev/null 2>&1
+    rm -rf "$HOME/.flashpoint"; rm -f "$HOME/.local/bin/flashpointwrapper.sh"; rm -f "$HOME/.local/share/applications/flashpoint-archive.desktop"
+    echo "Everything has been deleted except the Fedora 40 container image! You'll have to do that yourself with Docker or Podman."
+    exit 0
+  elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+    echo "Ok we won't delete."; exit 0
+  else
+    echo "Unknown option, exiting.."; exit 1
+  fi
+else
+  echo "Flashpoint isn't installed!"; exit 1
+fi
+}
+
+check_dir_fun() { # Users might already have a ~/.flashpoint folder with or without this projects installation so this makes sure that they know whats happening and what might get delete and gives them a choice to delete or save.
+check_depedencies_fun
+if [ -d "$HOME/.flashpoint" ]; then
+  if [ -d "$HOME/.flashpoint/fp-dt/Launcher" ]; then
+    echo "Flashpoint is already installed! Exiting.."; exit 0
+  else
+    echo "'$HOME/.flashpoint' but no Flashpoint installation was detected! Would you like to delete everything in this directory?"
+    read -rp "[Y/n] " Yn
+    if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+      rm -rf "$HOME/.flashpoint"; mkdir -p "$HOME/.flashpoint/fp-dt/"
+    elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+      echo "'$HOME/.flashpoint' is needed for installing Flashpoint, exiting.."; exit 1
+    else
+      echo "Unknown option, exiting.."; exit 1
+    fi
+  fi
+else
+  mkdir -p "$HOME/.flashpoint/fp-dt/"
+fi
+distrobox_setup_fun
+}
+
+create_desktop_entry_fun() { # This create a wrapper + a desktop file for distrobox to start and open flashpoint inside of it and for distrobox to shutoff after the user closes flashpoint.
+mkdir -p "$HOME/.local/bin"
+
+# Flashpoint + Distro wrapper
+if [ -d "$HOME/.local/bin/flashpointwrapper.sh" ]; then
+  rm "$HOME/.local/bin/flashpointwrapper.sh"
+fi
+cat > "$HOME/.local/bin/flashpointwrapper.sh" <<EOF
+#!/bin/bash
+cleanup() { echo Y | distrobox-stop Flashpoint; }
+trap cleanup EXIT
+distrobox-enter Flashpoint -- bash -c "/usr/bin/env -S WINEPREFIX="$HOME/.flashpoint/fp-dt/FPSoftware/Wine" $HOME/.flashpoint/fp-dt/Launcher/flashpoint-launcher --js-flags=--lite_mode --ozone-platform-hint=auto"
+EOF
+chmod +x "$HOME/.local/bin/flashpointwrapper.sh"
+# Flashpoint + Distrobox wrapper
+
+# Desktop entry for the wrapper
+if [ -d "$HOME/.local/share/applications/flashpoint-archive.desktop" ]; then
+  rm "$HOME/.local/share/applications/flashpoint-archive.desktop"
+fi
+cat > "$HOME/.local/share/applications/flashpoint-archive.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Flashpoint Archive
+Comment=An archive for games and animations from the web.
+Icon=$HOME/.flashpoint/fp-dt/Launcher/icon.svg
+StartupWMClass=flashpoint-launcher
+Exec=$HOME/.local/bin/flashpointwrapper.sh
+Path=$HOME/.flashpoint/fp-dt/Launcher
+Terminal=false
+Categories=Archiving;Game;
+SingleMainWindow=true
+EOF
+# Desktop entry for the wrapper
+
+# Flashpoint needs to run at least once for it to work like normal with this setup for some reason.?
+"$HOME/.flashpoint/fp-dt/./start-flashpoint.sh" & pid=$!; kill -INT $pid
+echo "Flashpoint has been installed."; exit 0
+}
+
+help_list_fun() {
+    echo "Usage:"
+    echo "--help                 |  Brings up the manager options."
+    echo "--install-flashpoint   |  Installs Flashpoint and the Distrobox container."
+    echo "--update-flashpoint    |  Updates Flashpoint."
+    echo "--reinstall-flashpoint |  Re-installs Flashpoint and the Distrobox container."
+    echo "--delete-flashpoint    |  Deletes Flashpoint the Distrobox container."
+    echo "--enable-wine-wayland  |  Enables Wine native Wayland. (Disabled by default)"
+    echo "--disable-wine-wayland |  Disables Wine native Wayland. (Disabled by default)"
+    exit 0
+}
+
+disable_win_wy_fun() {
+if [ -d "$HOME/.flashpoint/fp-dt/Launcher" ]; then
+  local win_stat="$(grep '"Graphics"' $HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg)"
+    if [ "$win_stat" = '"Graphics"="x11,wayland"' ] || [ -z "$win_stat" ]; then
+      echo "X11 is already in use."; exit 0
+    else
+      echo Yes | distrobox-enter Flashpoint -- bash -c "WINEPREFIX=$HOME/.flashpoint/fp-dt/FPSoftware/Wine wine reg add 'HKCU\Software\Wine\Drivers' /v Graphics /d x11,wayland /f" > /dev/null 2>&1
+      echo Y | distrobox-stop Flashpoint > /dev/null 2>&1
+      echo "Wine Wayland disabled."; exit 0
+    fi
+else
+  echo "Flashpoint isn't installed!"; exit 1
+fi
+}
+
+enable_wn_wy_fun() {
+if [ -d "$HOME/.flashpoint/fp-dt/Launcher" ]; then
+  local win_stat="$(grep '"Graphics"' $HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg)"
+    if [ "$win_stat" = '"Graphics"="wayland,x11"' ]; then
+        echo "Wine native Wayland already in use."; exit 0
+    else
+        distrobox-enter Flashpoint -- bash -c "WINEPREFIX=$HOME/.flashpoint/fp-dt/FPSoftware/Wine wine reg add 'HKCU\Software\Wine\Drivers' /v Graphics /d wayland,x11 /f" > /dev/null 2>&1
+      echo Y | distrobox-stop Flashpoint > /dev/null 2>&1
+      echo "Wine Wayland enabled."; exit 0
+    fi
+else
+  echo "Flashpoint isn't installed!"; exit 1
+fi
+}
+
+check_depedencies_fun() { # This just check if Distrobox exists.
+command -v distrobox > /dev/null 2>&1 || { echo "An installation of Distrobox need to be present! Please look up how to install it your distribution."; echo "https://distrobox.it/#installation"; exit 1; }
+}
+
+#entry point 
+if [ -z "$1" ]; then help_list_fun; fi
+case "$1" in
+    --help)                help_list_fun        ;;
+    --install-flashpoint)  check_dir_fun        ;;
+    --update-flashpoint)   update_fp_fun        ;;
+    --reinstall-flashpoint) re_install_fun      ;;
+    --delete-flashpoint)   delete_fun           ;;
+    --enable-wine-wayland) enable_wn_wy_fun     ;;
+    --disable-wine-wayland) disable_win_wy_fun  ;;
+    *) echo "Unknown Command: \"$1\""; help_list_fun ;;
+esac
