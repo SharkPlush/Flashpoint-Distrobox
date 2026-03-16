@@ -228,7 +228,7 @@ help_list_fun() {
 
 disable_win_wy_fun() {
 if [ -d "$HOME/.flashpoint/fp-dt/Launcher" ]; then
-  local win_stat="$(grep '"Graphics"' $HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg)"
+  local win_stat="$(grep '"Graphics"' $HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg 2>/dev/null)"
     if [ "$win_stat" = '"Graphics"="x11,wayland"' ] || [ -z "$win_stat" ]; then
       echo "X11 is already in use."; exit 0
     else
@@ -243,7 +243,7 @@ fi
 
 enable_wn_wy_fun() {
 if [ -d "$HOME/.flashpoint/fp-dt/Launcher" ]; then
-  local win_stat="$(grep '"Graphics"' $HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg)"
+  local win_stat="$(grep '"Graphics"' $HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg 2>/dev/null)"
     if [ "$win_stat" = '"Graphics"="wayland,x11"' ]; then
         echo "Wine native Wayland already in use."; exit 0
     else
