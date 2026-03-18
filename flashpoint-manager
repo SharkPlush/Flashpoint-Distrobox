@@ -12,7 +12,8 @@ update_fp_fun() { # The current updater has an issue that if the user hasnt laun
             mkdir -p "$HOME/.flashpoint/.update-folder-temp-dont-delete-2"
             distrobox-enter Flashpoint -T -- bash -c '7za x "$1" -o"$HOME/.update-folder-temp-dont-delete-2"' bash "$filepath" > /dev/null 2>&1
             if ! grep -q "Flashpoint" "$HOME/.flashpoint/.update-folder-temp-dont-delete-2/version.txt" 2>/dev/null; then
-                echo "The extracted .7z file wasn't Flashpoint!"; rm -rf "$HOME/.flashpoint/.update-folder-temp-dont-delete-2"; exit 1
+                echo "The extracted .7z file wasn't Flashpoint!"; rm -rf "$HOME/.flashpoint/.update-folder-temp-dont-delete-2"
+                distrobox-stop Flashpoint --yes > /dev/null 2>&1; exit 1
             fi    
         else
             echo "The file must be a .7z archive!"; exit 1
@@ -65,7 +66,6 @@ update_fp_fun() { # The current updater has an issue that if the user hasnt laun
             cp -r "$HOME/.flashpoint/.update-folder-temp-dont-delete/Wine"           "$HOME/.flashpoint/fp-dt/FPSoftware/"
             # FILE MANAGEMENT BS FOR DATA PRESERVATION
 
-            "$HOME/.flashpoint/fp-dt/start-flashpoint.sh" & pid=$!; kill -INT $pid
             rm -rf "$HOME/.flashpoint/.update-folder-temp-dont-delete"
             distrobox-stop Flashpoint --yes > /dev/null 2>&1; echo "Flashpoint has been updated."; exit 0
         # The whole update process
@@ -147,7 +147,8 @@ distrobox_setup_fun() {
     elif [[ "$filepath" = *.7z ]]; then
         distrobox-enter Flashpoint -T -- bash -c '7za x "$1" -o"$HOME/fp-dt"' bash "$filepath" > /dev/null 2>&1
         if ! grep -q "Flashpoint" "$HOME/.flashpoint/fp-dt/version.txt" 2>/dev/null; then
-            echo "The extracted .7z file wasn't Flashpoint!"; rm -rf "$HOME/.flashpoint/fp-dt"; exit 1
+            echo "The extracted .7z file wasn't Flashpoint!"; rm -rf "$HOME/.flashpoint/fp-dt"
+            distrobox-stop Flashpoint --yes > /dev/null 2>&1; exit 1
         else
             rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Libraries"; rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"
         fi
