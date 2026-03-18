@@ -72,9 +72,11 @@ update_fp_fun() { # The current updater has an issue that if the user hasnt laun
         
         # If the user doesnt wanna update just cancel and delete the junk
         elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
-            echo "Ok we won't update!"; rm -rf "$HOME/.flashpoint/.update-folder-temp-dont-delete-2"; exit 0
+            echo "Ok we won't update!"; rm -rf "$HOME/.flashpoint/.update-folder-temp-dont-delete-2"
+            distrobox-stop Flashpoint --yes > /dev/null 2>&1; exit 0
         else
-            echo "Unknown option, exiting.."; rm -rf "$HOME/.flashpoint/.update-folder-temp-dont-delete-2"; exit 1
+            echo "Unknown option, exiting.."; rm -rf "$HOME/.flashpoint/.update-folder-temp-dont-delete-2"
+            distrobox-stop Flashpoint --yes > /dev/null 2>&1; exit 1
         fi
         # If the user doesnt wanna update just cancel and delete the junk
 
@@ -153,7 +155,8 @@ distrobox_setup_fun() {
             rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Libraries"; rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"
         fi
     else
-        echo "The file is not a .7z archive"; rm -rf "$HOME/.flashpoint/fp-dt"; exit 1  
+        echo "The file is not a .7z archive"; rm -rf "$HOME/.flashpoint/fp-dt"
+        distrobox-stop Flashpoint --yes > /dev/null 2>&1; exit 1  
     fi
     # Has the user enter the location of the Flashpoint zip and does magic things    
 
@@ -259,8 +262,6 @@ SingleMainWindow=true
 EOF
 # Desktop entry for the wrapper
 
-# Flashpoint needs to run at least once for it to work like normal with this setup for some reason.?
-#"$HOME/.flashpoint/fp-dt/./start-flashpoint.sh" & pid=$!; kill -INT $pid
     echo "Flashpoint has been installed."; exit 0
 }
 
