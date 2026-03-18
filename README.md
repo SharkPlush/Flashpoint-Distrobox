@@ -49,5 +49,5 @@ TODO:
   - NVIDIA support. (Need help don't have a NVIDIA GPU)
   - Steamdeck support. (Need help don't have a Steamdeck also already might be supported I don't know it works to test though)
   - Discord rich presence if it doesn't work already. (Unlikely I'll do this if it doesn't work)
-  - Combine some functions and simplify the code.
   - Give the user a choice to user to use an image they like instead of the fedora:40 one.
+  - Add checks into Wine related functions to make sure the prefix was already generated and if it wasn't then generate one. (or generate one on install)
