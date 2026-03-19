@@ -262,13 +262,13 @@ ad_fx_fun() {
         else
         
             # user might try to edit wine settings while fp is open this is bad so we close everything first
-            if ps aux | grep -q flashpoint-archive 2>/dev/null; then
+            if pgrep -f flashpoint-archive > /dev/null 2>&1; then
             
                 echo "To change Wine settings Flashpoint must be closed! Would you like to close it now?"
                 read -rp "[Y/n] " Yn
                 
                 if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
-                    pkill -SIGTERM -f flashpoint-archive
+                    pkill -SIGTERM -f flashpoint-archive; sleep 5
                     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d pulse /f' > /dev/null 2>&1
                     distrobox-stop Flashpoint --yes > /dev/null 2>&1
                     echo "Audio fix disabled."; exit 0
@@ -303,13 +303,13 @@ ad_fx_fun() {
         else
           
             # user might try to edit wine settings while fp is open this is bad so we close everything first
-            if ps aux | grep -q flashpoint-archive 2>/dev/null; then
+            if pgrep -f flashpoint-archive > /dev/null 2>&1; then
           
                 echo "To change Wine settings Flashpoint must be closed! Would you like to close it now?"
                 read -rp "[Y/n] " Yn
           
                 if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
-                    pkill -SIGTERM -f flashpoint-archive
+                    pkill -SIGTERM -f flashpoint-archive; sleep 5
                     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d alsa /f' > /dev/null 2>&1
                     distrobox-stop Flashpoint --yes > /dev/null 2>&1
                     echo "Audio fix enabled."; exit 0
@@ -350,13 +350,13 @@ win_wy_fun() {
         else
             
             # user might try to edit wine settings while fp is open this is bad so we close everything first
-            if ps aux | grep -q flashpoint-archive 2>/dev/null; then
+            if pgrep -f flashpoint-archive > /dev/null 2>&1; then
             
                 echo "To change Wine settings Flashpoint must be closed! Would you like to close it now?"
                 read -rp "[Y/n] " Yn
                 
                 if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
-                    pkill -SIGTERM -f flashpoint-archive
+                    pkill -SIGTERM -f flashpoint-archive; sleep 5
                     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d x11,wayland /f' > /dev/null 2>&1
                     distrobox-stop Flashpoint --yes > /dev/null 2>&1
                     echo "Wine Wayland disabled."; exit 0
@@ -391,13 +391,13 @@ win_wy_fun() {
         else
 
             # user might try to edit wine settings while fp is open this is bad so we close everything first
-            if ps aux | grep -q flashpoint-archive 2>/dev/null; then
+            if pgrep -f flashpoint-archive > /dev/null 2>&1; then
 
                 echo "To change Wine settings Flashpoint must be closed! Would you like to close it now?"
                 read -rp "[Y/n] " Yn
         
                 if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
-                    pkill -SIGTERM -f flashpoint-archive
+                    pkill -SIGTERM -f flashpoint-archive; sleep 5
                     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d wayland,x11 /f' > /dev/null 2>&1
                     distrobox-stop Flashpoint --yes > /dev/null 2>&1
                     echo "Wine Wayland enabled."; exit 0
