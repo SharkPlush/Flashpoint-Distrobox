@@ -60,7 +60,7 @@ update_fp_fun() { # The current updater has an issue that if the user hasnt laun
         rm -f  "$HOME/.flashpoint/fp-dt/Data/flashpoint.sqlite"
         rm -rf "$HOME/.flashpoint/fp-dt/Data/Games"
         rm -rf "$HOME/.flashpoint/fp-dt/Legacy/htdocs"
-        rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Libraries"
+        rm -rf "$HOME/.flashpoint/fp-dt/Libraries"
         rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"  
         
         cp "$HOME/.flashpoint/.update-folder-temp-dont-delete/preferences.json"  "$HOME/.flashpoint/fp-dt"
@@ -135,7 +135,7 @@ distrobox_setup_fun() {
             distrobox-stop Flashpoint --yes > /dev/null 2>&1; exit 1
         
         else
-            rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Libraries"; rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"
+            rm -rf "$HOME/.flashpoint/fp-dt/Libraries"; rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"
             mkdir -p "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"
             distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wineboot' > /dev/null 2>&1
         fi
