@@ -85,7 +85,6 @@ update_fp_fun() { # The current updater has an issue that if the user hasnt laun
     # If the user doesnt wanna update just cancel and delete the junk
 }
 
-
 distrobox_setup_fun() {
     checks_fun
 
@@ -132,6 +131,8 @@ distrobox_setup_fun() {
         
         else
             rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Libraries"; rm -rf "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"
+            mkdir -p "$HOME/.flashpoint/fp-dt/FPSoftware/Wine"
+            distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wineboot' > /dev/null 2>&1
         fi
     
     else
@@ -196,7 +197,6 @@ delete_fun () {
     fi
 }
 
-
 create_desktop_entry_fun() {
     mkdir -p "$HOME/.local/bin" # make this as some user folders might not have it
 
@@ -260,27 +260,79 @@ ad_fx_fun() {
             
         # if audio fix is enabled then disable
         else
-            distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d pulse /f' > /dev/null 2>&1
-            distrobox-stop Flashpoint --yes > /dev/null 2>&1
-            echo "Audio fix disabled."; exit 0
-        fi    
+        
+            # user might try to edit wine settings while fp is open this is bad so we close everything first
+            if ps aux | grep -q flashpoint-archive 2>/dev/null; then
+            
+                echo "To change Wine settings Flashpoint must be closed! Would you like to close it now?"
+                read -rp "[Y/n] " Yn
+                
+                if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+                    pkill -SIGTERM -f flashpoint-archive
+                    distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d pulse /f' > /dev/null 2>&1
+                    distrobox-stop Flashpoint --yes > /dev/null 2>&1
+                    echo "Audio fix disabled."; exit 0
+                    
+                elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+                    echo "Ok we won't close Flashpoint."; exit 0
+                    
+                else
+                    echo "Unknown option, exiting.."; exit 1
+                fi
+            # user might try to edit wine settings while fp is open this is bad so we close everything first
+        
+            # if the dt container is off then just do the setting like normal
+            else
+                distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d pulse /f' > /dev/null 2>&1
+                distrobox-stop Flashpoint --yes > /dev/null 2>&1
+                echo "Audio fix disabled."; exit 0
+            fi
+            # if the dt container is off then just do the setting like normal
+        
+        fi      
         # if audio fix is enabled then disable
 
     elif [ "$STATE" = "ad_fx_en" ]; then
     
-      # if the audio fix is already enabled then just exit
-      if [ "$(grep '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Audio"="alsa"' ]; then
-          echo "Audio fix is already enabled."; exit 0    
-      # if the audio fix is already enabled then just exit
+        # if the audio fix is already enabled then just exit
+        if [ "$(grep '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Audio"="alsa"' ]; then
+            echo "Audio fix is already enabled."; exit 0    
+        # if the audio fix is already enabled then just exit
       
-      # if audio fix not enabled then enable
-      else
-          distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d alsa /f' > /dev/null 2>&1
-          distrobox-stop Flashpoint --yes > /dev/null 2>&1
-          echo "Audio fix enabled."; exit 0
-      fi  
-      # if audio fix not enabled then enable
+        # if audio fix not enabled then enable
+        else
+          
+            # user might try to edit wine settings while fp is open this is bad so we close everything first
+            if ps aux | grep -q flashpoint-archive 2>/dev/null; then
+          
+                echo "To change Wine settings Flashpoint must be closed! Would you like to close it now?"
+                read -rp "[Y/n] " Yn
+          
+                if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+                    pkill -SIGTERM -f flashpoint-archive
+                    distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d alsa /f' > /dev/null 2>&1
+                    distrobox-stop Flashpoint --yes > /dev/null 2>&1
+                    echo "Audio fix enabled."; exit 0
+              
+                elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+                    echo "Ok we won't close Flashpoint."; exit 0
+                    
+                else
+                    echo "Unknown option, exiting.."; exit 1
+                fi
+            # user might try to edit wine settings while fp is open this is bad so we close everything first
+               
+            # if the dt container is off then just do the setting like normal
+            else
+                distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d alsa /f' > /dev/null 2>&1
+                distrobox-stop Flashpoint --yes > /dev/null 2>&1
+                echo "Audio fix enabled."; exit 0
+            fi  
+            # if the dt container is off then just do the setting like normal
       
+        fi
+        # if audio fix not enabled then enable
+    
     fi
 }
 
@@ -296,10 +348,36 @@ win_wy_fun() {
         
         # if x11 wasnt in use then disable it
         else
-            distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d x11,wayland /f' > /dev/null 2>&1
-            distrobox-stop Flashpoint --yes > /dev/null 2>&1
-            echo "Wine Wayland disabled."; exit 0
-        fi    
+            
+            # user might try to edit wine settings while fp is open this is bad so we close everything first
+            if ps aux | grep -q flashpoint-archive 2>/dev/null; then
+            
+                echo "To change Wine settings Flashpoint must be closed! Would you like to close it now?"
+                read -rp "[Y/n] " Yn
+                
+                if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+                    pkill -SIGTERM -f flashpoint-archive
+                    distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d x11,wayland /f' > /dev/null 2>&1
+                    distrobox-stop Flashpoint --yes > /dev/null 2>&1
+                    echo "Wine Wayland disabled."; exit 0
+                    
+                elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+                    echo "Ok we won't close Flashpoint."; exit 0
+                
+                else
+                    echo "Unknown option, exiting.."; exit 1
+                fi
+            # user might try to edit wine settings while fp is open this is bad so we close everything first
+                
+            # if the dt container is off then just do the setting like normal
+            else
+                distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d x11,wayland /f' > /dev/null 2>&1
+                distrobox-stop Flashpoint --yes > /dev/null 2>&1
+                echo "Wine Wayland disabled."; exit 0
+            fi    
+            # if the dt container is off then just do the setting like normal
+                 
+        fi     
         # if x11 wasnt in use then disable it   
             
     elif [ "$STATE" = "wn_wy_en" ]; then
@@ -311,11 +389,38 @@ win_wy_fun() {
         
         # if wayland wasnt used the enable it
         else
-            distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d wayland,x11 /f' > /dev/null 2>&1
-            distrobox-stop Flashpoint --yes > /dev/null 2>&1
-            echo "Wine Wayland enabled."; exit 0
-         fi   
-         # if wayland wasnt used the enable it
+
+            # user might try to edit wine settings while fp is open this is bad so we close everything first
+            if ps aux | grep -q flashpoint-archive 2>/dev/null; then
+
+                echo "To change Wine settings Flashpoint must be closed! Would you like to close it now?"
+                read -rp "[Y/n] " Yn
+        
+                if [[ "$Yn" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+                    pkill -SIGTERM -f flashpoint-archive
+                    distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d wayland,x11 /f' > /dev/null 2>&1
+                    distrobox-stop Flashpoint --yes > /dev/null 2>&1
+                    echo "Wine Wayland enabled."; exit 0
+
+                elif [[ "$Yn" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+                    echo "Ok we won't close Flashpoint."; exit 0
+        
+                else
+                    echo "Unknown option, exiting.."; exit 1
+                fi
+            # user might try to edit wine settings while fp is open this is bad so we close everything first        
+        
+            # if the dt container is off then just do the setting like normal
+            else       
+                distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d wayland,x11 /f' > /dev/null 2>&1
+                distrobox-stop Flashpoint --yes > /dev/null 2>&1
+                echo "Wine Wayland enabled."; exit 0
+            fi   
+            # if the dt container is off then just do the setting like normal
+            
+        fi
+        # if wayland wasnt used the enable it
+    
     fi    
 }
 
