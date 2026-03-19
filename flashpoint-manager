@@ -1,6 +1,9 @@
 #!/bin/bash
+
+
+
 update_fp_fun() { # The current updater has an issue that if the user hasnt launcher FP yet but decides to update it for some reason it'll have issues.
-    checks_fun
+		checks_fun
     
     # Has the user enter the location of the Flashpoint zip and does magic things
     read -e -p "Enter the location of the Flashpoint .7z file: " filepath; filepath="${filepath/#\~/$HOME}"
@@ -85,6 +88,8 @@ update_fp_fun() { # The current updater has an issue that if the user hasnt laun
     # If the user doesnt wanna update just cancel and delete the junk
 }
 
+
+
 distrobox_setup_fun() {
     checks_fun
 
@@ -145,6 +150,8 @@ distrobox_setup_fun() {
     create_desktop_entry_fun
 }
 
+
+
 delete_fun () {
     checks_fun
     
@@ -197,11 +204,13 @@ delete_fun () {
     fi
 }
 
+
+
 create_desktop_entry_fun() {
     mkdir -p "$HOME/.local/bin" # make this as some user folders might not have it
 
 # Flashpoint + Distro wrapper
-    if [ -d "$HOME/.local/bin/flashpointwrapper.sh" ]; then
+    if [ -f "$HOME/.local/bin/flashpointwrapper.sh" ]; then
         rm "$HOME/.local/bin/flashpointwrapper.sh"
     fi
     cat > "$HOME/.local/bin/flashpointwrapper.sh" <<EOF
@@ -213,7 +222,7 @@ EOF
 # Flashpoint + Distrobox wrapper
 
 # Desktop entry for the wrapper
-    if [ -d "$HOME/.local/share/applications/flashpoint-archive.desktop" ]; then
+    if [ -f "$HOME/.local/share/applications/flashpoint-archive.desktop" ]; then
         rm "$HOME/.local/share/applications/flashpoint-archive.desktop"
     fi
     cat > "$HOME/.local/share/applications/flashpoint-archive.desktop" <<EOF
@@ -234,6 +243,8 @@ EOF
     echo "Flashpoint has been installed."; exit 0
 }
 
+
+
 help_list_fun() { # just the help list nothing to it
     echo "Usage:"
     echo "--help                 |  Brings up the manager options."
@@ -247,6 +258,8 @@ help_list_fun() { # just the help list nothing to it
     echo "--disable-audio-fix    |  Disables the ALSA audio backend in favor of PulseAudio. (Disabled by default)"
     exit 0
 }
+
+
 
 ad_fx_fun() {
     checks_fun
@@ -336,6 +349,8 @@ ad_fx_fun() {
     fi
 }
 
+
+
 win_wy_fun() {
     checks_fun
     
@@ -424,6 +439,8 @@ win_wy_fun() {
     fi    
 }
 
+
+
 checks_fun() {
     # first check for dt
     if ! command -v distrobox > /dev/null 2>&1; then
@@ -476,6 +493,8 @@ checks_fun() {
     # if not installing then just check install exists
 }
 
+
+
 #entry point
 if [ -z "$1" ]; then STATE="help"; help_list_fun; exit 0; fi
 case "$1" in
@@ -486,7 +505,7 @@ case "$1" in
     --update-flashpoint) if [ $# -ne 1 ]; then
             echo "Error: --update-flashpoint does not accept extra arguments." >&2; exit 1; fi; STATE="update"; update_fp_fun ;;
     --reinstall-flashpoint) if [ $# -ne 1 ]; then
-            echo "Error: --reinstall-flashpoint does not accept extra arguments." >&2; exit 1; fi; STATE="reinstall" delete_fun ;;
+            echo "Error: --reinstall-flashpoint does not accept extra arguments." >&2; exit 1; fi; STATE="reinstall"; delete_fun ;;
     --delete-flashpoint) if [ $# -ne 1 ]; then
             echo "Error: --delete-flashpoint does not accept extra arguments." >&2; exit 1; fi; STATE="delete"; delete_fun ;;
     --enable-wine-wayland) if [ $# -ne 1 ]; then
