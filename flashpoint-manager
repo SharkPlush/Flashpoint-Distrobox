@@ -121,7 +121,7 @@ update_fp_fun() { # This function updates (or downgrades) Flashpoint and tries i
         rm -f "$HOME/.flashpoint/fp-dt/Data/flashpoint.sqlite"
     fi
 
-    if [ -d "$HOME/.flashpoint/.update-folder-temp-dont-delete/flashpoint.sqlite/Games" ]; then
+    if [ -d "$HOME/.flashpoint/.update-folder-temp-dont-delete/Games" ]; then
         rm -rf "$HOME/.flashpoint/fp-dt/Data/Games"
     fi
 
