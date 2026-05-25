@@ -2,7 +2,7 @@
 
 create_distrobox_fun() {
     printf "Distrobox will install a Fedora 40 image with the dependencies for Flashpoint. (This will take a while)\n"
-    
+
     # Creates the Distrobox container.
     if ! distrobox-create --no-entry --image fedora:40 --home "$HOME/.flashpoint/" --name Flashpoint --yes > /dev/null 2>&1; then
         printf "Failed to create Distrobox container.\n"
@@ -19,7 +19,7 @@ create_distrobox_fun() {
     distrobox-stop Flashpoint --yes > /dev/null 2>&1
 }
 
-delete_distrobox_fun () {
+delete_distrobox_fun() {
     if ! distrobox-rm Flashpoint --yes > /dev/null 2>&1; then
         printf "Failed to delete Distrobox container\n"
     fi
@@ -49,14 +49,14 @@ update_fp_fun() { # This function updates (or downgrades) Flashpoint and tries i
 # After that the user data gets put back where it needs to be and some clean ups happen thats it.
 
     local YN USERDATA
-    
+
     # Detects if Flashpoint actually needs to updates. (or downgrade I guess?)
     if [ "$(< "$FP_TEMP_DIR/version.txt")" = "$(< "$HOME/.flashpoint/fp-dt/version.txt")" ]; then
         printf "Flashpoint is already up-to-date.\n"
         rm -rf "$FP_TEMP_DIR"
         exit 0
     fi
-        
+
     # This can only be reached if Flashpoint is outdated.
     # If Flashpoint needs an update then give the user a warning of what might happen and a choice to cancel.
     printf "Flashpoint is outdated! This manager tries to preserve as much data as possible but..\nSome data like custom playlists might be lost! If you want you can find them in\n'$HOME/.flashpoint/fp-dt/Data/Playlists/' and copy paste them back in after the update is finished.\nWould you like to update?\n"
@@ -65,24 +65,24 @@ update_fp_fun() { # This function updates (or downgrades) Flashpoint and tries i
     # If user says yes then continue.
     if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
         printf "Starting update..\n"
-        
+
     # If user says no then just cleanup and exit.
     elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
         printf "Ok we won't update!\n"
         rm -rf "$FP_TEMP_DIR"
         exit 0
-            
+
     # If yes or no wasn't said then just cleanup and exit.
     else
         printf "Unknown option, exiting..\n"
         rm -rf "$FP_TEMP_DIR"
-        exit 2 
+        exit 2
     fi
-    
+
     # This can only be reached if user said yes.
     # Make a temporary directory to store user data.
     USERDATA="$(mktemp -d "$HOME/.flashpoint/userdata.XXXXXX")"
-       
+
     # Everything here transfers user data to a temporary directory.
     if [ -f "$HOME/.flashpoint/fp-dt/preferences.json" ]; then
         cp "$HOME/.flashpoint/fp-dt/preferences.json" "$USERDATA"
@@ -111,7 +111,7 @@ update_fp_fun() { # This function updates (or downgrades) Flashpoint and tries i
     # After all user data is preserved delete the old Flashpoint install and replace it with the new one.
     rm -rf "$HOME/.flashpoint/fp-dt/"
     mv "$FP_TEMP_DIR" "$HOME/.flashpoint/fp-dt"
-            
+
     # Remove all the conflicting stuff from the new "fp-dt" directory.
     if [ -f "$USERDATA/preferences.json" ]; then
         rm -f "$HOME/.flashpoint/fp-dt/preferences.json"
@@ -129,12 +129,12 @@ update_fp_fun() { # This function updates (or downgrades) Flashpoint and tries i
         rm -rf "$HOME/.flashpoint/fp-dt/Data/Games"
     fi
 
-    if [ -d "$USERDATA/htdocs" ]; then 
+    if [ -d "$USERDATA/htdocs" ]; then
         rm -rf "$HOME/.flashpoint/fp-dt/Legacy/htdocs"
     fi
-       
+
     # Move all the user data back to where it should be.
-    if [ -f "$USERDATA/preferences.json" ]; then 
+    if [ -f "$USERDATA/preferences.json" ]; then
         cp "$USERDATA/preferences.json" "$HOME/.flashpoint/fp-dt"
     fi
 
@@ -213,11 +213,11 @@ file_extraction_fun() { # This function is for setting up the Distrobox containe
     local FILEPATH
 
     FP_TEMP_DIR="$(mktemp -d "$HOME/.flashpoint/flashpoint.XXXXXX")"
-                                      
+
     # Has the user enter the location of the Flashpoint zip and does magic things
     read -e -p "Enter the location of the Flashpoint .7z file: " FILEPATH
     FILEPATH="${FILEPATH/#\~/$HOME}"
-    
+
     # If file path doesn't exist then exit.
     if [ ! -f "$FILEPATH" ]; then
         printf "File does not exist\n"
@@ -238,14 +238,14 @@ file_extraction_fun() { # This function is for setting up the Distrobox containe
         printf "Extraction failed!\n"
         exit 1
     fi
-    
+
     # If the extracted .7z file wasn't Flashpoint then delete the extracted contents and exit.
     if ! grep -q "Flashpoint" "$FP_TEMP_DIR/version.txt" 2>/dev/null; then
         printf "The extracted .7z file wasn't Flashpoint!\n"
         rm -rf "$FP_TEMP_DIR"
         distrobox-stop Flashpoint --yes > /dev/null 2>&1
         exit 1
-        
+
     # If everything went like it should delete unneeded extras and continue.
     else
         rm -rf "$FP_TEMP_DIR/Libraries"
@@ -258,7 +258,7 @@ file_extraction_fun() { # This function is for setting up the Distrobox containe
 
 ad_fx_on_fun() { # This function enables / disables the audio fixes WINE might need.
     local YN
-    
+
     # If audio fix is already enabled then exit.
     if [ "$(grep '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Audio"="alsa"' ]; then
         printf "Audio fix is already enabled.\n"
@@ -269,27 +269,27 @@ ad_fx_on_fun() { # This function enables / disables the audio fixes WINE might n
 
     # If Flashpoint is open then we need to close it.
     if pgrep -f "flashpoint-archive" > /dev/null 2>&1; then
-          
+
         # Asking to close it is probably the best approach as user might be playing a game and have unsaved data.
         printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
         read -rp "[Y/n] " YN
-          
+
         # If user says yes then exit Flashpoint.
         if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
             pkill -SIGTERM -f flashpoint-archive
             sleep 5
-              
+
         # If user says no then just exit the script.
         elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
             printf "Ok we won't close Flashpoint.\n"
             exit 0
-                    
+
         # If yes or no weren't said just exit.
         else
             printf "Unknown option, exiting..\n"
             exit 2
-        fi               
-            
+        fi
+
         # This can only be reached if yes was said.
         if ! distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d alsa /f' > /dev/null 2>&1; then
             printf "Failed to enabled audio fix.\n"
@@ -309,7 +309,7 @@ ad_fx_on_fun() { # This function enables / disables the audio fixes WINE might n
 
         distrobox-stop Flashpoint --yes > /dev/null 2>&1
         printf "Audio fix enabled.\n"
-    fi        
+    fi
 }
 
 ad_fx_off_fun() {
@@ -325,21 +325,21 @@ ad_fx_off_fun() {
 
     # If Flashpoint is open then we need to close it.
     if pgrep -f "flashpoint-archive" > /dev/null 2>&1; then
-            
+
         # Asking to close it is probably the best approach as user might be playing a game and have unsaved data.
         printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
         read -rp "[Y/n] " YN
-                
+
         # If user says yes then exit Flashpoint.
         if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
             pkill -SIGTERM -f flashpoint-archive
             sleep 5
-                    
+
         # If user says no then just exit the script.
         elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
             printf "Ok we won't close Flashpoint.\n"
             exit 0
-            
+
         # If yes or no weren't said just exit.
         else
             printf "Unknown option, exiting..\n"
@@ -354,7 +354,7 @@ ad_fx_off_fun() {
 
         distrobox-stop Flashpoint --yes > /dev/null 2>&1
         printf "Audio fix disabled.\n"
-        
+
     # If Flashpoint isn't open then just continue like normal.
     else
 
@@ -369,8 +369,8 @@ ad_fx_off_fun() {
 }
 
 win_wy_on_fun() { # This functions disables / enableds WINE Wayland.
-    local YN            
-    
+    local YN
+
     # Check if Wayland is already used.
     if [ "$(grep '"Graphics"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Graphics"="wayland,x11"' ]; then
         printf "Wine native Wayland already in use.\n"
@@ -381,7 +381,7 @@ win_wy_on_fun() { # This functions disables / enableds WINE Wayland.
 
     # If Flashpoint is open then we need to close it.
     if pgrep -f "flashpoint-archive" > /dev/null 2>&1; then
-            
+
         # Asking to close it is probably the best approach as user might be playing a game and have unsaved data.
         printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
         read -rp "[Y/n] " YN
@@ -395,7 +395,7 @@ win_wy_on_fun() { # This functions disables / enableds WINE Wayland.
         elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
             printf "Ok we won't close Flashpoint.\n"
             exit 0
-        
+
         # If yes or no weren't said just exit.
         else
             printf "Unknown option, exiting..\n"
@@ -410,9 +410,9 @@ win_wy_on_fun() { # This functions disables / enableds WINE Wayland.
 
         distrobox-stop Flashpoint --yes > /dev/null 2>&1
         printf "Wine Wayland enabled.\n"
-        
+
     # If Flashpoint isn't open then just continue like normal.
-    else      
+    else
 
         if ! distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d wayland,x11 /f' > /dev/null 2>&1; then
             printf "Failed to enable WINE Wayland.\n"
@@ -421,7 +421,7 @@ win_wy_on_fun() { # This functions disables / enableds WINE Wayland.
 
         distrobox-stop Flashpoint --yes > /dev/null 2>&1
         printf "Wine Wayland enabled.\n"
-    fi               
+    fi
 }
 
 win_wy_off_fun() {
@@ -432,7 +432,7 @@ win_wy_off_fun() {
         printf "X11 is already in use.\n"
         exit 2
     fi
-                   
+
     # If X11 wasn't being used then continue.
 
     # If Flashpoint is open then we need to close it.
@@ -441,17 +441,17 @@ win_wy_off_fun() {
         # Asking to close it is probably the best approach as user might be playing a game and have unsaved data.
         printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
         read -rp "[Y/n] " YN
-                
+
         # If user says yes then exit Flashpoint.
         if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
             pkill -SIGTERM -f flashpoint-archive
             sleep 5
-                    
+
         # If user says no then just exit the script.
         elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
             printf "Ok we won't close Flashpoint.\n"
             exit 0
-                
+
         # If yes or no weren't said just exit.
         else
             printf "Unknown option, exiting..\n"
@@ -484,7 +484,7 @@ check_dependencies_fun() { # Function for checking dependencies.
     if ! command -v distrobox > /dev/null 2>&1; then
         printf "An installation of Distrobox need to be present! Please look up how to install it your distribution.\nhttps://distrobox.it/#installation\n"
         exit 1
-    fi 
+    fi
 }
 
 check_install_fun() { # Function for checking if Flashpoint is installed.
@@ -508,7 +508,7 @@ check_install_fun() { # Function for checking if Flashpoint is installed.
             if grep -q "Flashpoint" "$HOME/.flashpoint/fp-dt/version.txt" 2>/dev/null; then
                 printf "Flashpoint is already installed!\n"
                 exit 2
-        
+
             else
                 # If Flashpoint wasn't installed but "$HOME/.flashpoint" existed then ask the user if they want to delete the directory.
                 printf "'$HOME/.flashpoint' already exists, but no Flashpoint installation was detected! Would you like to delete everything in this directory?\nThis is asked because '$HOME/.flashpoint' might contain important data.\n"
@@ -528,16 +528,16 @@ check_install_fun() { # Function for checking if Flashpoint is installed.
                 else
                     printf "Unknown option, exiting..\n"
                     exit 2
-                fi    
+                fi
 
-            fi    
+            fi
 
         # If "$HOME/.flashpoint" doesn't exist then make the directory and finish.
         else
             mkdir -p "$HOME/.flashpoint"
         fi
 
-    fi    
+    fi
 }
 
 check_distrobox_fun() {
@@ -580,7 +580,7 @@ easter_egg_fun() {
         printf "Another instance of the Flashpoint manager is already running.\nPlease wait until it finishes.\nIf you are positive this script isn't running anywhere else you can run 'rm -f /tmp/flashpoint-manager.lock' to remove this error.\n"
         exit 1
     fi
-    
+
     trap 'rm -f "/tmp/flashpoint-manager.lock"' EXIT
 
     touch "/tmp/flashpoint-manager.lock"
@@ -599,7 +599,7 @@ easter_egg_fun() {
                                         help_list_fun
                                         exit 0
                                         ;;
-            
+
         --install-flashpoint)           if [ $# -ne 1 ]; then
                                             printf "Error: --install-flashpoint does not accept extra arguments.\n"
                                             exit 2
@@ -623,7 +623,7 @@ easter_egg_fun() {
                                         update_fp_fun
                                         exit 0
                                         ;;
-    
+
         --reinstall-flashpoint)         if [ $# -ne 1 ]; then
                                             printf "Error: --reinstall-flashpoint does not accept extra arguments.\n"
                                             exit 2
@@ -688,7 +688,7 @@ easter_egg_fun() {
                                         check_install_fun
                                         ad_fx_off_fun
                                         exit 0
-                                        ;;                               
+                                        ;;
 
         --easter-egg)                   if [ $# -ne 1 ]; then
                                             printf "Error: --easter-egg does not accept extra arguments.\n"
@@ -697,7 +697,7 @@ easter_egg_fun() {
                                         easter_egg_fun
                                         exit 0
                                         ;;
-                                        
+
         --restore-container)            if [ $# -ne 1 ]; then
                                             printf "Error: --restore-container does not accept extra arguments.\n"
                                             exit 2
@@ -711,6 +711,6 @@ easter_egg_fun() {
 
         *)                              printf "Unknown Command: \"$1\"\n"
                                         help_list_fun
-                                        exit 2 
+                                        exit 2
                                         ;;
     esac
