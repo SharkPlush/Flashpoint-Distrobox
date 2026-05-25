@@ -559,6 +559,7 @@ Usage:
 --disable-wine-wayland |  Disables Wine native Wayland. (Disabled by default)
 --enable-audio-fix     |  Enables ALSA audio backend for Wine this can fix issue with audio. (Disabled by default)
 --disable-audio-fix    |  Disables the ALSA audio backend in favor of PulseAudio. (Disabled by default)
+--restore-container    |  Restores Distrobox container if it was deleted. (User data will be safe)
 EOF
 }
 
