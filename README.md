@@ -51,4 +51,3 @@ TODO:
   - Discord rich presence if it doesn't work already. (Unlikely I'll do this if it doesn't work)
   - Create backup feature and a restore backup feature.
   - Verbose mode.
-  - set -euo pipefail
