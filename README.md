@@ -48,6 +48,6 @@ The internal home is stored inside of your user home directory "~/.flashpoint" o
 TODO:
   - NVIDIA support. (Need help don't have a NVIDIA GPU)
   - Steamdeck support. (Need help don't have a Steamdeck also already might be supported I don't know it works to test though)
-  - Discord rich presence if it doesn't work already. (Unlikely I'll do this if it doesn't work)
   - Create backup feature and a restore backup feature.
   - Verbose mode.
+  - Consider using a Fedora 43 containers because it seems to run fine and has Wine 11 so we can make use of NTSYNC. The difference in performance is likely unnoticable but whatever every bit counts.
