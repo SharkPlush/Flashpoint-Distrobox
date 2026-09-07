@@ -12,7 +12,7 @@ check_dependencies_fun() {
 
 create_distrobox_fun() {
     distrobox list | grep -q '\<Flashpoint\>' && {
-        printf "The Distrobox container already exists?\n"; exit 2
+        printf "The Distrobox container already exists. (Did you already have a Distrobox contained named 'Flashpoint'?\n"; exit 2
     }
     printf "Distrobox will install a Fedora 40 image with all the dependencies for Flashpoint. (This will take a while)\n"
     distrobox-create \
@@ -143,13 +143,14 @@ file_extraction_fun() {
         printf "The file must be a .7z archive\n"; exit 2
     }
 
-    printf "Extracting the zip file..\n"
-    distrobox-enter Flashpoint --not-tty -- bash -c '7za x "$1" -o"$2"' bash "$FILEPATH" "$FP_TEMP_DIR" || {
-        printf "Extraction failed!\n"; exit 1
-    }
-    grep -q "Flashpoint" "$FP_TEMP_DIR/version.txt" || {
-        printf "The extracted .7z file wasn't Flashpoint!\n"; rm -rf "$FP_TEMP_DIR"; distrobox-stop Flashpoint --yes; exit 2
-    }
+    if distrobox-enter Flashpoint --not-tty -- bash -c '7z l "$1"' bash "$FILEPATH" | grep -q "version.txt"; then
+        printf "Extracting the zip file..\n"
+        distrobox-enter Flashpoint --not-tty -- bash -c '7za x "$1" -o"$2"' bash "$FILEPATH" "$FP_TEMP_DIR" || {
+            printf "Extraction failed!\n"; distrobox-stop Flashpoint --yes; exit 1
+        }
+    else
+        printf "The provided .7z archive wasn't Flashpoint.\n"; distrobox-stop Flashpoint --yes; exit 2
+    fi
 
     distrobox-stop Flashpoint --yes
     rm -rf "$FP_TEMP_DIR/Libraries"; rm -rf "$FP_TEMP_DIR/FPSoftware/Wine"; mkdir -p "$FP_TEMP_DIR/FPSoftware/Wine"
