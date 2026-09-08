@@ -282,7 +282,6 @@ easter_egg_fun() {
 
 ##### entry point #####
 FP_TEMP_DIR=""
-
 if [ -e "/tmp/flashpoint-manager.lock" ]; then
     printf "Another instance of the Flashpoint manager is already running.\nPlease wait until it finishes.\nIf you are positive this script isn't running anywhere else you can run 'rm -f /tmp/flashpoint-manager.lock' to remove this error.\n"; exit 1
 fi
