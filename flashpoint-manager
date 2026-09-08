@@ -17,10 +17,10 @@ create_distrobox_fun() {
     printf "Distrobox will install a Fedora 40 image with all the dependencies for Flashpoint. (This will take a while)\n"
     distrobox-create \
         --no-entry \
-        --image fedora:40 \
-        --home "$HOME/.flashpoint/" \
-        --name Flashpoint \
-        --additional-packages "
+        -i fedora:40 \
+        -H "$HOME/.flashpoint/" \
+        -n Flashpoint \
+        -a "
             xorg-x11-server-Xwayland
             gtk3
             nss
@@ -33,13 +33,13 @@ create_distrobox_fun() {
             gtk2
             libXt" \
         --nvidia \
-        --yes || {
+        -Y || {
             printf "Failed to create the Distrobox container.\n"; exit 2
         }
 }
 
 delete_distrobox_fun() {
-    distrobox-rm Flashpoint --force --yes
+    distrobox-rm Flashpoint -f --rm-home -Y
 }
 
 delete_fp_fun() {
@@ -105,8 +105,8 @@ update_fp_fun() {
 
 finish_install_fun() {
     mv "$FP_TEMP_DIR" "$HOME/.flashpoint/fp-dt"
-    distrobox-enter Flashpoint --no-tty -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wineboot'
-    distrobox-stop Flashpoint --yes
+    distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wineboot'
+    distrobox-stop Flashpoint -Y
 
     mkdir -p "$HOME/.local/bin"
     cat > "$HOME/.local/bin/flashpointwrapper.sh" <<EOF
@@ -143,21 +143,23 @@ file_extraction_fun() {
         printf "The file must be a .7z archive\n"; exit 2
     }
 
-    if distrobox-enter Flashpoint --not-tty -- bash -c '7z l "$1"' bash "$FILEPATH" | grep -q "version.txt"; then
+    if distrobox-enter Flashpoint -T -- bash -c '7z l "$1"' bash "$FILEPATH" | grep -q "version.txt"; then
         printf "Extracting the zip file..\n"
-        distrobox-enter Flashpoint --not-tty -- bash -c '7za x "$1" -o"$2"' bash "$FILEPATH" "$FP_TEMP_DIR" || {
-            printf "Extraction failed!\n"; distrobox-stop Flashpoint --yes; exit 1
+        distrobox-enter Flashpoint -T -- bash -c '7za x "$1" -o"$2"' bash "$FILEPATH" "$FP_TEMP_DIR" || {
+            printf "Extraction failed!\n"; distrobox-stop Flashpoint -Y; exit 1
         }
     else
-        printf "The provided .7z archive wasn't Flashpoint.\n"; distrobox-stop Flashpoint --yes; exit 2
+        printf "The provided .7z archive wasn't Flashpoint.\n"; distrobox-stop Flashpoint -Y; exit 2
     fi
 
-    distrobox-stop Flashpoint --yes
+    distrobox-stop Flashpoint -Y
     rm -rf "$FP_TEMP_DIR/Libraries"; rm -rf "$FP_TEMP_DIR/FPSoftware/Wine"; mkdir -p "$FP_TEMP_DIR/FPSoftware/Wine"
 }
 
 check_install_fun() {
-    grep -q "Flashpoint" "$HOME/.flashpoint/fp-dt/version.txt"
+    grep -q "Flashpoint" "$HOME/.flashpoint/fp-dt/version.txt" || {
+        return 1
+    }
 }
 
 ad_fx_on_fun() {
@@ -182,7 +184,7 @@ ad_fx_on_fun() {
     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d alsa /f' || {
         printf "Failed to enabled audio fix.\n"; exit 1
     }
-    distrobox-stop Flashpoint --yes; printf "Audio fix enabled.\n"
+    distrobox-stop Flashpoint -Y; printf "Audio fix enabled.\n"
 }
 
 ad_fx_off_fun() {
@@ -207,7 +209,7 @@ ad_fx_off_fun() {
     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d pulse /f' || {
         printf "Failed to disable audio fix.\n"; exit 1
     }
-    distrobox-stop Flashpoint --yes; printf "Audio fix disabled.\n"
+    distrobox-stop Flashpoint -Y; printf "Audio fix disabled.\n"
 }
 
 win_wy_off_fun() {
@@ -232,7 +234,7 @@ win_wy_off_fun() {
     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d x11,wayland /f'; {
         printf "Failed to disable WINE Wayland.\n"; exit 1
     }
-    distrobox-stop Flashpoint --yes; printf "Wine Wayland disabled.\n"
+    distrobox-stop Flashpoint -Y; printf "Wine Wayland disabled.\n"
 }
 
 win_wy_on_fun() {
@@ -257,7 +259,7 @@ win_wy_on_fun() {
     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d wayland,x11 /f' || {
         printf "Failed to enable WINE Wayland.\n"; exit 1
     }
-    distrobox-stop Flashpoint --yes; printf "Wine Wayland enabled.\n"
+    distrobox-stop Flashpoint -Y; printf "Wine Wayland enabled.\n"
 }
 
 help_list_fun() { # Help list.
@@ -305,7 +307,11 @@ case "$1" in
             printf "Error: --install-flashpoint does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun
+        if ! check_install_fun; then
+            :
+        else
+            printf "Flashpoint is already installed.\n"; exit 2
+        fi
         create_distrobox_fun
         file_extraction_fun
         finish_install_fun
