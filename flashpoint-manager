@@ -272,12 +272,18 @@ easter_egg_fun() {
     printf "You found the easter egg! :)\nThis is my favorite game on Flashpoint.\nhttps://flashpointproject.github.io/flashpoint-database/search/#327bec45-5455-4633-a8b0-7c612751c478\n"
 }
 
+cleanup_fun() {
+    # If installation fails at any point we should cleanup the trash.
+    [ "$INSTALL_STATE" = "PARTIAL" ] && {
+        delete_distrobox_fun
+    }
+}
 ##### entry point #####
 FP_TEMP_DIR=""
 if [ -e "/tmp/flashpoint-manager.lock" ]; then
     printf "Another instance of the Flashpoint manager is already running.\nPlease wait until it finishes.\nIf you are positive this script isn't running anywhere else you can run 'rm -f /tmp/flashpoint-manager.lock' to remove this error.\n"; exit 1
 fi
-trap 'rm -f "/tmp/flashpoint-manager.lock"' EXIT
+trap cleanup_fun; 'rm "/tmp/flashpoint-manager.lock"' EXIT
 touch "/tmp/flashpoint-manager.lock"
 
 if [ -z "${1:-}" ]; then
