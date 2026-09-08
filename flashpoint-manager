@@ -289,6 +289,7 @@ fi
 trap 'rm -f "/tmp/flashpoint-manager.lock"' EXIT
 touch "/tmp/flashpoint-manager.lock"
 
+
 if [ -z "${1:-}" ]; then
     help_list_fun; exit 2
 fi
