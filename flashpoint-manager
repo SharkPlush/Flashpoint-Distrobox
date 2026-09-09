@@ -316,7 +316,7 @@ case "$1" in
         fi
         check_dependencies_fun
         check_install_fun && {
-            printf "Flashpoint was already installed.\n"; exit 2
+            printf "Flashpoint is already installed.\n"; exit 2
         }
         check_distrobox_fun
         create_distrobox_fun
