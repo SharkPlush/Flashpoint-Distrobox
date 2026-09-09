@@ -45,7 +45,7 @@ check_install_fun() {
 }
 
 check_distrobox_fun() {
-    distrobox list | grep -q '\<Flashpoint\>' &>/dev/null || {
+    distrobox list | grep '\<Flashpoint\>' &>/dev/null || {
         printf "Flashpoint is installed but the Distrobox container is missing?\nRunning --restore-distrobox is recommended.\n"; exit 2
     }
 }
@@ -69,7 +69,7 @@ EOF
 # ----- INSTALLATION FUNCTIONS -----
 
 create_distrobox_fun() {
-    distrobox list | grep -q '\<Flashpoint\>' &>/dev/null && {
+    distrobox list | grep '\<Flashpoint\>' &>/dev/null || {
         printf "The Distrobox container already exists. (Did you already have a Distrobox contained named 'Flashpoint'?)\nInstallation will attempt to continue.\n"; return 0
     }
     printf "Distrobox will install a Fedora 40 image with all the dependencies for Flashpoint. (This will take a while)\n"
