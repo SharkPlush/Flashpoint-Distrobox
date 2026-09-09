@@ -1,18 +1,76 @@
 #!/bin/bash
 set -uo pipefail
 
+# ----- HELPER FUNCTIONS -----
+
 check_dependencies_fun() {
     command -v {podman,docker,lilipod} &>/dev/null || {
         printf "A container engine must be installed.\n"; exit 1
     }
     command -v distrobox &>/dev/null || {
-        printf printf "Distrobox must be installed.\nhttps://distrobox.it/#installation\n"; exit 1
+        printf "Distrobox must be installed.\nhttps://distrobox.it/#installation\n"; exit 1
     }
 }
 
+file_extraction_fun() {
+    local FILEPATH
+
+    FP_TEMP_DIR="$(mktemp -d "$HOME/.flashpoint/flashpoint.XXXXXX")"
+    read -e -p "Enter the location of the Flashpoint .7z file: " FILEPATH; FILEPATH="${FILEPATH/#\~/$HOME}"
+
+    [ ! -f "$FILEPATH" ] && {
+        printf "File does not exist\n"; rm -rf "$FP_TEMP_DIR"; exit 2
+    }
+    [[ "$FILEPATH" != *.7z ]] && {
+        printf "The file must be a .7z archive\n"; rm -rf "$FP_TEMP_DIR"; exit 2
+    }
+
+    if distrobox-enter Flashpoint -T -- bash -c '7za l "$1" | grep -q "version.txt"' bash "$FILEPATH" &>/dev/null; then
+        printf "Extracting the zip file..\n"
+        distrobox-enter Flashpoint -T -- bash -c '7za x "$1" -o"$2"' bash "$FILEPATH" "$FP_TEMP_DIR" &>/dev/null || {
+            printf "Extraction failed!\n"; distrobox-stop Flashpoint -Y; rm -rf "$FP_TEMP_DIR"; exit 1
+        }
+    else
+        printf "The provided .7z archive wasn't Flashpoint.\n"; distrobox-stop Flashpoint -Y; rm -rf "$FP_TEMP_DIR"; exit 2
+    fi
+
+    distrobox-stop Flashpoint -Y &>/dev/null
+    rm -rf "$FP_TEMP_DIR/Libraries"; rm -rf "$FP_TEMP_DIR/FPSoftware/Wine"; mkdir -p "$FP_TEMP_DIR/FPSoftware/Wine"
+}
+
+check_install_fun() {
+    grep -q "Flashpoint" "$HOME/.flashpoint/fp-dt/version.txt" &>/dev/null || {
+        return 1
+    }
+}
+
+check_distrobox_fun() {
+    distrobox list | grep -q '\<Flashpoint\>' &>/dev/null || {
+        printf "Flashpoint is installed but the Distrobox container is missing?\nRunning --restore-distrobox is recommended.\n"; exit 2
+    }
+}
+
+help_list_fun() {
+    cat <<EOF
+Usage:
+--help                 |  Brings up the manager options.
+--install-flashpoint   |  Installs Flashpoint and the Distrobox container.
+--update-flashpoint    |  Updates Flashpoint.
+--reinstall-flashpoint |  Re-installs Flashpoint and the Distrobox container.
+--delete-flashpoint    |  Deletes Flashpoint the Distrobox container.
+--enable-wine-wayland  |  Enables Wine native Wayland. (Disabled by default)
+--disable-wine-wayland |  Disables Wine native Wayland. (Disabled by default)
+--enable-audio-fix     |  Enables ALSA audio backend for Wine this can fix issue with audio. (Disabled by default)
+--disable-audio-fix    |  Disables the ALSA audio backend in favor of PulseAudio. (Disabled by default)
+--restore-distrobox    |  Restores Distrobox container if it was deleted. (User data will be safe)
+EOF
+}
+
+# ----- INSTALLATION FUNCTIONS -----
+
 create_distrobox_fun() {
     distrobox list | grep -q '\<Flashpoint\>' &>/dev/null && {
-        printf "The Distrobox container already exists. (Did you already have a Distrobox contained named 'Flashpoint'?\n"; exit 2
+        printf "The Distrobox container already exists. (Did you already have a Distrobox contained named 'Flashpoint'?)\nInstallation will attempt to continue.\n"; return 0
     }
     printf "Distrobox will install a Fedora 40 image with all the dependencies for Flashpoint. (This will take a while)\n"
     distrobox-create \
@@ -22,14 +80,45 @@ create_distrobox_fun() {
         --name Flashpoint \
         --nvidia \
         -Y &>/dev/null || {
-            printf "Failed to create the Distrobox container.\n"; exit 2
+            printf "Failed to create the Distrobox container.\n"; exit 1
         }
-    distrobox-enter Flashpoint -T -- bash -c 'sudo dnf install xorg-x11-server-Xwayland gtk3 nss pipewire-pulseaudio php p7zip wine libXcomposite.i686 pulseaudio-libs.i686 gtk2 libXt -y' &>/dev/null
+    distrobox-enter Flashpoint -T -- bash -c 'sudo dnf install xorg-x11-server-Xwayland gtk3 nss pipewire-pulseaudio php p7zip wine libXcomposite.i686 pulseaudio-libs.i686 gtk2 libXt -y' &>/dev/null || {
+        printf "Failed to install dependencies inside the Distrobox container.\n"; exit 1
+    }
     distrobox-stop Flashpoint -Y &>/dev/null
 }
 
+finish_install_fun() {
+    mv "$FP_TEMP_DIR" "$HOME/.flashpoint/fp-dt"
+    distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wineboot' &>/dev/null
+    distrobox-stop Flashpoint -Y &>/dev/null
+
+    mkdir -p "$HOME/.local/bin"
+    cat > "$HOME/.local/bin/flashpointwrapper.sh" <<EOF
+#!/bin/bash
+trap "distrobox-stop Flashpoint --yes" EXIT
+distrobox-enter Flashpoint -T -- bash -c '/usr/bin/env -S WINEPREFIX="$HOME/.flashpoint/fp-dt/FPSoftware/Wine" "$HOME/.flashpoint/fp-dt/Launcher/flashpoint-launcher" --js-flags=--lite_mode --ozone-platform-hint=auto'
+EOF
+    cat > "$HOME/.local/share/applications/flashpoint-archive.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Flashpoint Archive
+Comment=An archive for games and animations from the web.
+Icon=$HOME/.flashpoint/fp-dt/Launcher/icon.svg
+StartupWMClass=flashpoint-launcher
+Exec=$HOME/.local/bin/flashpointwrapper.sh
+Path=$HOME/.flashpoint/fp-dt/Launcher
+Terminal=false
+Categories=Archiving;Game;
+SingleMainWindow=true
+EOF
+    chmod +x "$HOME/.local/bin/flashpointwrapper.sh"; printf "Flashpoint has been installed.\n"; exit 0
+}
+
+# ----- DELETION FUNCTIONS -----
+
 delete_distrobox_fun() {
-    distrobox-rm Flashpoint -f --rm-home -Y &>/dev/null
+    distrobox-rm Flashpoint -f -Y &>/dev/null
 }
 
 delete_fp_fun() {
@@ -38,7 +127,9 @@ delete_fp_fun() {
     rm -f "$HOME/.local/share/applications/flashpoint-archive.desktop"
 }
 
-# This function updates (or downgrades) Flashpoint and tries it's best to preserve data.
+# ---- MANAGEMENT FUNCTIONS -----
+
+# This function updates (or downgrades) Flashpoint and tries its best to preserve data.
 # The update proccess kinda sucks because it is complicated, but whatever it works and IMO it is the best way of updating.
 # The update works by taking a new .7z Flashpoint file and cross checking the "version.txt" file inside it with the currently installed one.
 # This allows for downgrades also but this isn't made for that.
@@ -93,69 +184,10 @@ update_fp_fun() {
     rm -rf "$USERDATA"; printf "Flashpoint has been updated.\n"
 }
 
-finish_install_fun() {
-    mv "$FP_TEMP_DIR" "$HOME/.flashpoint/fp-dt"
-    distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wineboot' &>/dev/null
-    distrobox-stop Flashpoint -Y &>/dev/null
-
-    mkdir -p "$HOME/.local/bin"
-    cat > "$HOME/.local/bin/flashpointwrapper.sh" <<EOF
-#!/bin/bash
-trap "distrobox-stop Flashpoint --yes" EXIT
-distrobox-enter Flashpoint -T -- bash -c '/usr/bin/env -S WINEPREFIX="$HOME/.flashpoint/fp-dt/FPSoftware/Wine" "$HOME/.flashpoint/fp-dt/Launcher/flashpoint-launcher" --js-flags=--lite_mode --ozone-platform-hint=auto'
-EOF
-    cat > "$HOME/.local/share/applications/flashpoint-archive.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Flashpoint Archive
-Comment=An archive for games and animations from the web.
-Icon=$HOME/.flashpoint/fp-dt/Launcher/icon.svg
-StartupWMClass=flashpoint-launcher
-Exec=$HOME/.local/bin/flashpointwrapper.sh
-Path=$HOME/.flashpoint/fp-dt/Launcher
-Terminal=false
-Categories=Archiving;Game;
-SingleMainWindow=true
-EOF
-    chmod +x "$HOME/.local/bin/flashpointwrapper.sh"; printf "Flashpoint has been installed.\n"
-}
-
-file_extraction_fun() {
-    local FILEPATH
-
-    FP_TEMP_DIR="$(mktemp -d "$HOME/.flashpoint/flashpoint.XXXXXX")"
-    read -e -p "Enter the location of the Flashpoint .7z file: " FILEPATH; FILEPATH="${FILEPATH/#\~/$HOME}"
-
-    [ ! -f "$FILEPATH" ] && {
-        printf "File does not exist\n"; exit 2
-    }
-    [[ "$FILEPATH" != *.7z ]] && {
-        printf "The file must be a .7z archive\n"; exit 2
-    }
-
-    if distrobox-enter Flashpoint -T -- bash -c '7z l "$1"' bash "$FILEPATH" | grep -q "version.txt" &>/dev/null; then
-        printf "Extracting the zip file..\n"
-        distrobox-enter Flashpoint -T -- bash -c '7za x "$1" -o"$2"' bash "$FILEPATH" "$FP_TEMP_DIR" &>/dev/null || {
-            printf "Extraction failed!\n"; distrobox-stop Flashpoint -Y; exit 1
-        }
-    else
-        printf "The provided .7z archive wasn't Flashpoint.\n"; distrobox-stop Flashpoint -Y; exit 2
-    fi
-
-    distrobox-stop Flashpoint -Y
-    rm -rf "$FP_TEMP_DIR/Libraries"; rm -rf "$FP_TEMP_DIR/FPSoftware/Wine"; mkdir -p "$FP_TEMP_DIR/FPSoftware/Wine"
-}
-
-check_install_fun() {
-    grep -q "Flashpoint" "$HOME/.flashpoint/fp-dt/version.txt"  &>/dev/null || {
-        return 1
-    }
-}
-
 ad_fx_on_fun() {
     local YN
 
-    [ "$(< '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg")" = '"Audio"="alsa"' ] && {
+    [ "$(grep '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Audio"="alsa"' ] && {
         printf "Audio fix is already enabled.\n"; exit 2
     }
 
@@ -174,13 +206,13 @@ ad_fx_on_fun() {
     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d alsa /f' &>/dev/null || {
         printf "Failed to enabled audio fix.\n"; exit 1
     }
-    distrobox-stop Flashpoint -Y &>/dev/null; printf "Audio fix enabled.\n"
+    distrobox-stop Flashpoint -Y &>/dev/null; printf "Audio fix enabled.\n"; exit 0
 }
 
 ad_fx_off_fun() {
     local YN
 
-    [ "$(< '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg")" = '"Audio"="pulse"' ] || [ -z "$(< '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg")" ] && {
+    [ "$(grep '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Audio"="pulse"' ] || [ -z "$(grep '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" ] && {
         printf "Audio fix is already disabled\n"; exit 2
     }
 
@@ -199,13 +231,13 @@ ad_fx_off_fun() {
     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d pulse /f' &>/dev/null || {
         printf "Failed to disable audio fix.\n"; exit 1
     }
-    distrobox-stop Flashpoint -Y &>/dev/null; printf "Audio fix disabled.\n"
+    distrobox-stop Flashpoint -Y &>/dev/null; printf "Audio fix disabled.\n"; exit 0
 }
 
 win_wy_off_fun() {
     local YN
 
-    [ "$(< '"Graphics"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg")" = '"Graphics"="x11,wayland"' ] || [ -z "$(< '"Graphics"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg")" ] && {
+    [ "$(grep '"Graphics"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Graphics"="x11,wayland"' ] || [ -z "$(grep '"Graphics"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" ] && {
         printf "X11 is already in use.\n"; exit 2
     }
 
@@ -224,13 +256,13 @@ win_wy_off_fun() {
     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d x11,wayland /f' &>/dev/null || {
         printf "Failed to disable WINE Wayland.\n"; exit 1
     }
-    distrobox-stop Flashpoint -Y &>/dev/null; printf "Wine Wayland disabled.\n"
+    distrobox-stop Flashpoint -Y &>/dev/null; printf "Wine Wayland disabled.\n"; exit 0
 }
 
 win_wy_on_fun() {
     local YN
 
-    [ "$(< '"Graphics"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg")" = '"Graphics"="wayland,x11"' ] || {
+    [ "$(grep '"Graphics"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Graphics"="wayland,x11"' ] && {
         printf "Wine native Wayland already in use.\n"; exit 2
     }
 
@@ -249,41 +281,22 @@ win_wy_on_fun() {
     distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d wayland,x11 /f' &>/dev/null || {
         printf "Failed to enable WINE Wayland.\n"; exit 1
     }
-    distrobox-stop Flashpoint -Y &>/dev/null; printf "Wine Wayland enabled.\n"
+    distrobox-stop Flashpoint -Y &>/dev/null; printf "Wine Wayland enabled.\n"; exit 0
 }
 
-help_list_fun() { # Help list.
-    cat <<EOF
-Usage:
---help                 |  Brings up the manager options.
---install-flashpoint   |  Installs Flashpoint and the Distrobox container.
---update-flashpoint    |  Updates Flashpoint.
---reinstall-flashpoint |  Re-installs Flashpoint and the Distrobox container.
---delete-flashpoint    |  Deletes Flashpoint the Distrobox container.
---enable-wine-wayland  |  Enables Wine native Wayland. (Disabled by default)
---disable-wine-wayland |  Disables Wine native Wayland. (Disabled by default)
---enable-audio-fix     |  Enables ALSA audio backend for Wine this can fix issue with audio. (Disabled by default)
---disable-audio-fix    |  Disables the ALSA audio backend in favor of PulseAudio. (Disabled by default)
---restore-container    |  Restores Distrobox container if it was deleted. (User data will be safe)
-EOF
-}
+# ----- FUN -----
 
 easter_egg_fun() {
     printf "You found the easter egg! :)\nThis is my favorite game on Flashpoint.\nhttps://flashpointproject.github.io/flashpoint-database/search/#327bec45-5455-4633-a8b0-7c612751c478\n"
 }
 
-cleanup_fun() {
-    # If installation fails at any point we should cleanup the trash.
-    [ "$INSTALL_STATE" = "PARTIAL" ] && {
-        delete_distrobox_fun
-    }
-}
-##### entry point #####
+# ----- ENTRY POINT -----
+
 FP_TEMP_DIR=""
 if [ -e "/tmp/flashpoint-manager.lock" ]; then
     printf "Another instance of the Flashpoint manager is already running.\nPlease wait until it finishes.\nIf you are positive this script isn't running anywhere else you can run 'rm -f /tmp/flashpoint-manager.lock' to remove this error.\n"; exit 1
 fi
-trap cleanup_fun; 'rm "/tmp/flashpoint-manager.lock"' EXIT
+trap 'rm "/tmp/flashpoint-manager.lock"' EXIT
 touch "/tmp/flashpoint-manager.lock"
 
 if [ -z "${1:-}" ]; then
@@ -302,11 +315,10 @@ case "$1" in
             printf "Error: --install-flashpoint does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        if ! check_install_fun; then
-            :
-        else
-            printf "Flashpoint is already installed.\n"; exit 2
-        fi
+        check_install_fun || {
+            printf "Flashpoint was already installed.\n"; exit 2
+        }
+        check_distrobox_fun
         create_distrobox_fun
         file_extraction_fun
         finish_install_fun
@@ -317,7 +329,10 @@ case "$1" in
             printf "Error: --update-flashpoint does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun
+        check_install_fun || {
+            printf "Flashpoint is not installed.\n"; exit 1
+        }
+        check_distrobox_fun
         file_extraction_fun
         update_fp_fun
         exit 0
@@ -327,10 +342,8 @@ case "$1" in
             printf "Error: --reinstall-flashpoint does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun
         delete_fp_fun
         delete_distrobox_fun
-        check_distrobox_fun
         create_distrobox_fun
         file_extraction_fun
         finish_install_fun
@@ -340,7 +353,6 @@ case "$1" in
         if [ $# -ne 1 ]; then
             printf "Error: --delete-flashpoint does not accept extra arguments.\n"; exit 2
         fi
-        check_install_fun
         delete_distrobox_fun
         delete_fp_fun
         printf "Everything has been deleted except the Fedora 40 container image! You'll have to do that yourself with Docker or Podman.\n"
@@ -351,7 +363,10 @@ case "$1" in
             printf "Error: --enable-wine-wayland does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun
+        check_install_fun || {
+            printf "Flashpoint is not installed.\n"; exit 1
+        }
+        check_distrobox_fun
         win_wy_on_fun
         exit 0
         ;;
@@ -360,7 +375,10 @@ case "$1" in
             printf "Error: --disable-wine-wayland does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun
+        check_install_fun || {
+            printf "Flashpoint is not installed.\n"; exit 1
+        }
+        check_distrobox_fun
         win_wy_off_fun
         exit 0
         ;;
@@ -369,7 +387,10 @@ case "$1" in
             printf "Error: --enable-audio-fix does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun
+        check_install_fun || {
+            printf "Flashpoint is not installed.\n"; exit 1
+        }
+        check_distrobox_fun
         ad_fx_on_fun
         exit 0
         ;;
@@ -378,7 +399,10 @@ case "$1" in
             printf "Error: --disable-audio-fix does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun
+        check_install_fun || {
+            printf "Flashpoint is not installed.\n"; exit 1
+        }
+        check_distrobox_fun
         ad_fx_off_fun
         exit 0
         ;;
@@ -389,13 +413,15 @@ case "$1" in
         easter_egg_fun
         exit 0
         ;;
-    --restore-container)
+    --restore-distrobox)
         if [ $# -ne 1 ]; then
-            printf "Error: --restore-container does not accept extra arguments.\n"; exit 2
+            printf "Error: --restore-distrobox does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun
-        check_distrobox_fun
+        check_install_fun || {
+            printf "Flashpoint is not installed.\n"; exit 1
+        }
+        delete_distrobox_fun
         create_distrobox_fun
         exit 0
         ;;
