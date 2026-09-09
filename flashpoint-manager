@@ -39,7 +39,7 @@ file_extraction_fun() {
 }
 
 check_install_fun() {
-    grep -q "Flashpoint" "$HOME/.flashpoint/fp-dt/version.txt" &>/dev/null || {
+    grep "Flashpoint" "$HOME/.flashpoint/fp-dt/version.txt" &>/dev/null || {
         return 1
     }
 }
@@ -315,7 +315,7 @@ case "$1" in
             printf "Error: --install-flashpoint does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun && {
+        check_install_fun || {
             printf "Flashpoint is already installed.\n"; exit 2
         }
         check_distrobox_fun
