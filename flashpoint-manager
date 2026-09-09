@@ -112,7 +112,7 @@ Terminal=false
 Categories=Archiving;Game;
 SingleMainWindow=true
 EOF
-    chmod +x "$HOME/.local/bin/flashpointwrapper.sh"; printf "Flashpoint has been installed.\n"; exit 0
+    chmod +x "$HOME/.local/bin/flashpointwrapper.sh"; update-desktop-database ~/.local/share/applications; printf "Flashpoint has been installed.\n"; exit 0
 }
 
 # ----- DELETION FUNCTIONS -----
