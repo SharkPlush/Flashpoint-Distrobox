@@ -315,7 +315,7 @@ case "$1" in
             printf "Error: --install-flashpoint does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
-        check_install_fun || {
+        check_install_fun && {
             printf "Flashpoint was already installed.\n"; exit 2
         }
         check_distrobox_fun
