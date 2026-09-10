@@ -56,13 +56,13 @@ Usage:
 --help                 |  Brings up the manager options.
 --install-flashpoint   |  Installs Flashpoint and the Distrobox container.
 --update-flashpoint    |  Updates Flashpoint.
---reinstall-flashpoint |  Re-installs Flashpoint and the Distrobox container.
+--reinstall-flashpoint |  Re-installs Flashpoint and the Distrobox container. (User data will be lost.)
 --delete-flashpoint    |  Deletes Flashpoint the Distrobox container.
---enable-wine-wayland  |  Enables Wine native Wayland. (Disabled by default)
---disable-wine-wayland |  Disables Wine native Wayland. (Disabled by default)
---enable-audio-fix     |  Enables ALSA audio backend for Wine this can fix issue with audio. (Disabled by default)
---disable-audio-fix    |  Disables the ALSA audio backend in favor of PulseAudio. (Disabled by default)
---restore-distrobox    |  Restores Distrobox container if it was deleted. (User data will be safe)
+--enable-wine-wayland  |  Enables Wine native Wayland. (Disabled by default.)
+--disable-wine-wayland |  Disables Wine native Wayland. (Disabled by default.)
+--enable-audio-fix     |  Enables ALSA audio backend for Wine this can fix issue with audio. (Disabled by default.)
+--disable-audio-fix    |  Disables the ALSA audio backend in favor of PulseAudio. (Disabled by default.)
+--restore-distrobox    |  Restores Distrobox container if it was deleted. (User data will be safe.)
 EOF
 }
 
@@ -191,7 +191,7 @@ ad_fx_on_fun() {
         printf "Audio fix is already enabled.\n"; exit 2
     fi
 
-    if pgrep -f "flashpoint-archive"; then
+    if pgrep -f "flashpoint-archive" &>/dev/null; then
         printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
         read -rp "[Y/n] " YN; YN="${YN:-Y}"
         if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
@@ -216,7 +216,7 @@ ad_fx_off_fun() {
         printf "Audio fix is already disabled\n"; exit 2
     fi
 
-    if pgrep -f "flashpoint-archive"; then
+    if pgrep -f "flashpoint-archive" &>/dev/null; then
         printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
         read -rp "[Y/n] " YN; YN="${YN:-Y}"
         if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
@@ -241,7 +241,7 @@ win_wy_off_fun() {
         printf "X11 is already in use.\n"; exit 2
     fi
 
-    if pgrep -f "flashpoint-archive"; then
+    if pgrep -f "flashpoint-archive" &>/dev/null; then
         printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
         read -rp "[Y/n] " YN; YN="${YN:-Y}"
         if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
@@ -266,9 +266,9 @@ win_wy_on_fun() {
         printf "Wine native Wayland already in use.\n"; exit 2
     fi
 
-    if pgrep -f "flashpoint-archive"; then
+    if pgrep -f "flashpoint-archive" &>/dev/null; then
         printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
-        read -rp "[Y/n] " YN
+        read -rp "[Y/n] " YN; YN="${YN:-Y}"
         if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
             pkill -SIGTERM -f flashpoint-archive; sleep 5
         elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
