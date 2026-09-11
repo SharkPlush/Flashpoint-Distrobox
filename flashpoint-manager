@@ -3,6 +3,22 @@ set -uo pipefail
 
 # ----- HELPER FUNCTIONS -----
 
+close_fp_fun() {
+    local YN
+
+    if pgrep -f "flashpoint-archive" &>/dev/null; then
+        printf "To continue using flashpoint-manager Flashpoint must be closed.\nWould you like to close it now?\n"
+        read -rp "[Y/n] " YN; YN="${YN:-Y}"
+        if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
+            pkill -SIGTERM -f flashpoint-archive; sleep 5; distrobox-stop Flashpoint -Y &>/dev/null
+        elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
+            printf "Ok we won't close Flashpoint.\n"; exit 0
+        else
+            printf "Unknown option, exiting..\n"; exit 2
+        fi
+    fi
+}
+
 check_dependencies_fun() {
     if ! command -v {podman,docker,lilipod} &>/dev/null; then
         printf "A container engine must be installed.\n"; exit 1
@@ -156,8 +172,8 @@ update_fp_fun() {
     # Save user data.
     USERDATA="$(mktemp -d "$HOME/.flashpoint/userdata.XXXXXX")"
     cp "$HOME/.flashpoint/fp-dt/preferences.json" "$USERDATA"
-    cp "$HOME/.flashpoint/fp-dt/Data/Playlists/Favorites.json" "$USERDATA"
     cp "$HOME/.flashpoint/fp-dt/Data/flashpoint.sqlite" "$USERDATA"
+    cp -r "$HOME/.flashpoint/fp-dt/Data/Playlists" "$USERDATA"
     cp -r "$HOME/.flashpoint/fp-dt/Data/Games" "$USERDATA"
     cp -r "$HOME/.flashpoint/fp-dt/Legacy/htdocs" "$USERDATA"
     cp -r "$HOME/.flashpoint/fp-dt/FPSoftware/Wine" "$USERDATA"
@@ -167,15 +183,15 @@ update_fp_fun() {
 
     # Remove conflicting data.
     rm -f "$HOME/.flashpoint/fp-dt/preferences.json"
-    rm -f "$HOME/.flashpoint/fp-dt/Data/Playlists/Favorites.json"
     rm -f "$HOME/.flashpoint/fp-dt/Data/flashpoint.sqlite"
+    rm -rf "$HOME/.flashpoint/fp-dt/Data/Playlists"
     rm -rf "$HOME/.flashpoint/fp-dt/Data/Games"
     rm -rf "$HOME/.flashpoint/fp-dt/Legacy/htdocs"
 
     # Restore user data.
     cp "$USERDATA/preferences.json" "$HOME/.flashpoint/fp-dt"
-    cp "$USERDATA/Favorites.json" "$HOME/.flashpoint/fp-dt/Data/Playlists/"
     cp "$USERDATA/flashpoint.sqlite" "$HOME/.flashpoint/fp-dt/Data/"
+    cp -r "$USERDATA/Playlists" "$HOME/.flashpoint/fp-dt/Data/"
     cp -r "$USERDATA/Games" "$HOME/.flashpoint/fp-dt/Data/"
     cp -r "$USERDATA/htdocs" "$HOME/.flashpoint/fp-dt/Legacy/"
     cp -r "$USERDATA/Wine" "$HOME/.flashpoint/fp-dt/FPSoftware/"
@@ -191,18 +207,6 @@ ad_fx_on_fun() {
         printf "Audio fix is already enabled.\n"; exit 2
     fi
 
-    if pgrep -f "flashpoint-archive" &>/dev/null; then
-        printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
-        read -rp "[Y/n] " YN; YN="${YN:-Y}"
-        if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
-            pkill -SIGTERM -f flashpoint-archive; sleep 5
-        elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
-            printf "Ok we won't close Flashpoint.\n"; exit 0
-        else
-            printf "Unknown option, exiting..\n"; exit 2
-        fi
-    fi
-
     if ! distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d alsa /f' &>/dev/null; then
         printf "Failed to enabled audio fix.\n"; exit 1
     fi
@@ -214,18 +218,6 @@ ad_fx_off_fun() {
 
     if [ "$(grep '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Audio"="pulse"' ] || [ -z "$(grep '"Audio"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" ]; then
         printf "Audio fix is already disabled\n"; exit 2
-    fi
-
-    if pgrep -f "flashpoint-archive" &>/dev/null; then
-        printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
-        read -rp "[Y/n] " YN; YN="${YN:-Y}"
-        if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
-            pkill -SIGTERM -f flashpoint-archive; sleep 5
-        elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
-            printf "Ok we won't close Flashpoint.\n"; exit 0
-        else
-            printf "Unknown option, exiting..\n"; exit 2
-        fi
     fi
 
     if ! distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Audio /d pulse /f' &>/dev/null; then
@@ -241,18 +233,6 @@ win_wy_off_fun() {
         printf "X11 is already in use.\n"; exit 2
     fi
 
-    if pgrep -f "flashpoint-archive" &>/dev/null; then
-        printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
-        read -rp "[Y/n] " YN; YN="${YN:-Y}"
-        if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
-            pkill -SIGTERM -f flashpoint-archive; sleep 5
-        elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
-            printf "Ok we won't close Flashpoint.\n"; exit 0
-        else
-            printf "Unknown option, exiting..\n"; exit 2
-        fi
-    fi
-
     if ! distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d x11,wayland /f' &>/dev/null; then
         printf "Failed to disable WINE Wayland.\n"; exit 1
     fi
@@ -264,18 +244,6 @@ win_wy_on_fun() {
 
     if [ "$(grep '"Graphics"' "$HOME/.flashpoint/fp-dt/FPSoftware/Wine/user.reg" 2>/dev/null)" = '"Graphics"="wayland,x11"' ]; then
         printf "Wine native Wayland already in use.\n"; exit 2
-    fi
-
-    if pgrep -f "flashpoint-archive" &>/dev/null; then
-        printf "To change Wine settings Flashpoint must be closed! Would you like to close it now?\n"
-        read -rp "[Y/n] " YN; YN="${YN:-Y}"
-        if [[ "$YN" =~ ^([Yy]|[Yy][Ee][Ss])$ ]]; then
-            pkill -SIGTERM -f flashpoint-archive; sleep 5
-        elif [[ "$YN" =~ ^([Nn]|[Nn][Oo])$ ]]; then
-            printf "Ok we won't close Flashpoint.\n"; exit 0
-        else
-            printf "Unknown option, exiting..\n"; exit 2
-        fi
     fi
 
     if ! distrobox-enter Flashpoint -T -- bash -c 'WINEPREFIX="$HOME/fp-dt/FPSoftware/Wine" wine reg add "HKCU\Software\Wine\Drivers" /v Graphics /d wayland,x11 /f' &>/dev/null; then
@@ -296,7 +264,7 @@ FP_TEMP_DIR=""
 if [ -e "/tmp/flashpoint-manager.lock" ]; then
     printf "Another instance of the Flashpoint manager is already running.\nPlease wait until it finishes.\nIf you are positive this script isn't running anywhere else you can run 'rm -f /tmp/flashpoint-manager.lock' to remove this error.\n"; exit 1
 fi
-trap 'rm "/tmp/flashpoint-manager.lock"' EXIT
+trap 'rm "/tmp/flashpoint-manager.lock"; rm -rf "$FP_TEMP_DIR"' EXIT
 touch "/tmp/flashpoint-manager.lock"
 
 if [ -z "${1:-}" ]; then
@@ -334,6 +302,7 @@ case "$1" in
             printf "Flashpoint is not installed.\n"; exit 1
         fi
         check_distrobox_fun
+        close_fp_fun
         file_extraction_fun
         update_fp_fun
         exit 0
@@ -343,6 +312,7 @@ case "$1" in
             printf "Error: --reinstall-flashpoint does not accept extra arguments.\n"; exit 2
         fi
         check_dependencies_fun
+        close_fp_fun
         delete_fp_fun
         delete_distrobox_fun
         create_distrobox_fun
@@ -354,6 +324,7 @@ case "$1" in
         if [ $# -ne 1 ]; then
             printf "Error: --delete-flashpoint does not accept extra arguments.\n"; exit 2
         fi
+        close_fp_fun
         delete_distrobox_fun
         delete_fp_fun
         printf "Everything has been deleted except the Fedora 40 container image! You'll have to do that yourself with Docker or Podman.\n"
@@ -368,6 +339,7 @@ case "$1" in
             printf "Flashpoint is not installed.\n"; exit 1
         fi
         check_distrobox_fun
+        close_fp_fun
         win_wy_on_fun
         exit 0
         ;;
@@ -380,6 +352,7 @@ case "$1" in
             printf "Flashpoint is not installed.\n"; exit 1
         fi
         check_distrobox_fun
+        close_fp_fun
         win_wy_off_fun
         exit 0
         ;;
@@ -392,6 +365,7 @@ case "$1" in
             printf "Flashpoint is not installed.\n"; exit 1
         fi
         check_distrobox_fun
+        close_fp_fun
         ad_fx_on_fun
         exit 0
         ;;
@@ -404,6 +378,7 @@ case "$1" in
             printf "Flashpoint is not installed.\n"; exit 1
         fi
         check_distrobox_fun
+        close_fp_fun
         ad_fx_off_fun
         exit 0
         ;;
@@ -422,6 +397,7 @@ case "$1" in
         if ! check_install_fun; then
             printf "Flashpoint is not installed.\n"; exit 1
         fi
+        close_fp_fun
         delete_distrobox_fun
         create_distrobox_fun
         exit 0
