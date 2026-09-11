@@ -19,7 +19,7 @@ Features:
   - Distrobox container stops after Flashpoint is closed.
   - Untested NVIDIA support.
   - Isolation to "$HOME/.flashpoint" (Except the wrapper and .desktop file)
-  -
+
 Why this exists?
 1. After Flashpoint started using WOW64 for Wine most of the games I play became unplayable.
 2. Flashpoint updates on Linux aren't simple if you want to preserve you game data.
